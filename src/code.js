@@ -13,6 +13,8 @@ export default function code(data) {
     myDomain,
     notionUrl,
     slugs,
+    meta,
+    fieldNames,
     pageTitle,
     pageDescription,
     googleFont,
@@ -39,7 +41,31 @@ ${slugs
     if (!id || !pageUrl) return '';
     return `    '${pageUrl}': '${id}',\n`;
   })
-  .join('')}  };
+  .join('')}  
+};
+
+const PAGE_TO_META = {
+  ${meta
+    .map(([notionPageUrl, title, description]) => {
+      const id = getId(notionPageUrl);
+      if (!id) return '';
+      return `    '${id}': {title: '${title}', description: '${description}'},\n`;
+    })
+    .join('')}
+};
+
+const PROPERTIES_TO_DELETE= {
+  ${fieldNames
+    .map(([notionPageUrl, fieldName]) => {
+      const id = getId(notionPageUrl);
+      if (!id) return '';
+      return `    '${id}': ['${fieldName
+        .split(',')
+        .map((el) => el.trim())
+        .join("', '")}'],\n`;
+    })
+    .join('')}
+};
 
 /* Step 3: enter your page title and description for SEO purposes */
 const PAGE_TITLE = '${pageTitle || ''}';
@@ -123,23 +149,89 @@ async function fetchAndApply(request) {
     response = new Response(body.replace(/www.notion.so/g, MY_DOMAIN).replace(/notion.so/g, MY_DOMAIN), response);
     response.headers.set('Content-Type', 'application/x-javascript');
     return response;
-  } else if ((url.pathname.startsWith('/api'))) {
+  }
+  if ((url.pathname.startsWith('/api'))) {
     // Forward API
     response = await fetch(url.toString(), {
-      body: url.pathname.startsWith('/api/v3/getPublicPageData') ? null : request.body,
+      body: url.pathname.startsWith('/api/v3/getPublicPageData')
+        ? null
+        : request.body,
       headers: {
         'content-type': 'application/json;charset=UTF-8',
-        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36'
+        'user-agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36',
       },
       method: 'POST',
     });
-    response = new Response(response.body, response);
-    response.headers.set('Access-Control-Allow-Origin', '*');
-    return response;
-  } else if (slugs.indexOf(url.pathname.slice(1)) > -1) {
+    
+    // TODO remove hardcoded ids for properties, pass properties that should be hidden as human readable names
+    const deleteProperties = (response, parentId, deleteSchema = false) => {
+      const deletedKeys = [];
+      let collectionId;
+      Object.entries(response?.recordMap?.collection || {}).forEach(([key, value]) => {
+          if (value.value.parent_id.replaceAll('-', '') === parentId) {
+              collectionId = key;
+          }
+      })
+      if (collectionId && response?.recordMap?.collection?.[collectionId]?.value?.schema) {
+          if (deleteSchema) {
+              delete response.recordMap.collection[collectionId].value.deleted_schema;
+          }
+          Object.entries(response.recordMap.collection?.[collectionId].value.schema).forEach(([key, value]) => {
+              if (PROPERTIES_TO_DELETE[parentId].map((fieldName) => fieldName.toLowerCase()).includes(value.name.toLowerCase())) {
+                  deletedKeys.push(key);
+                  delete response.recordMap.collection?.[collectionId]?.value?.schema[key];
+              }
+          });
+      }
+      return {deletedKeys, collectionId};
+    };
+    // TODO remove hardcoded ids for properties, pass properties that should be hidden as human readable names 
+    const deletePropertiesRows = (response, collectionId, deletedKeys) => {
+      for (const block in response.recordMap.block) {
+          if (response.recordMap.block[block]?.value?.parent_id === collectionId &&
+          response.recordMap.block[block]?.value?.properties) {
+              deletedKeys.forEach((key) => {delete response.recordMap.block[block]?.value?.properties[key];});
+          }
+      }
+    };
+    let responseWorker = new Response(response.body, response);
+    responseWorker.headers.set('Access-Control-Allow-Origin', '*');
+    
+    if (url.pathname.startsWith('/api/v3/queryCollection') || 
+    url.pathname.startsWith('/api/v3/syncRecordValues') || 
+    url.pathname.startsWith('/api/v3/loadPageChunk')) {
+      let responseBody = await response.json();
+      Object.keys(PROPERTIES_TO_DELETE).forEach((id) => {
+          const {deletedKeys, collectionId} = deleteProperties(responseBody, id, true);
+          deletePropertiesRows(responseBody, collectionId, deletedKeys);
+      });
+      const body = JSON.stringify({ ...responseBody });
+      responseWorker = new Response(body, responseWorker);
+    }
+    if (url.pathname.startsWith('/api/v3/loadCachedPageChunk')) {
+      let responseBody = await response.json();
+      Object.keys(PROPERTIES_TO_DELETE).forEach((id) => {
+        deleteProperties(responseBody, id);
+      });
+      const body = JSON.stringify({ ...responseBody });
+      responseWorker = new Response(body, responseWorker);
+    }
+    return responseWorker;
+  } 
+  if (slugs.indexOf(url.pathname.slice(1)) > -1) {
     const pageId = SLUG_TO_PAGE[url.pathname.slice(1)];
-    return Response.redirect('https://' + MY_DOMAIN + '/' + pageId, 301);
+    url.pathname = '/' + pageId;
+    response = await fetch(url.toString(), {
+      body: request.body,
+      headers: request.headers,
+      method: request.method,
+    });
   } else {
+    if (slugs.indexOf(url.pathname.slice(1)) > -1) {
+      const pageId = SLUG_TO_PAGE[url.pathname.slice(1)];
+      url.pathname = '/' + pageId;
+    }     
     response = await fetch(url.toString(), {
       body: request.body,
       headers: request.headers,
@@ -150,25 +242,34 @@ async function fetchAndApply(request) {
     response.headers.delete('X-Content-Security-Policy');
   }
 
-  return appendJavascript(response, SLUG_TO_PAGE);
+  return appendJavascript(response, SLUG_TO_PAGE, PAGE_TO_META, url.pathname.slice(1));
 }
 
 class MetaRewriter {
+  constructor (pageId, meta) {
+    this.pageId = pageId;
+    this.PAGE_TO_META = meta;
+  }
   element(element) {
+    if (SITE_NAME !== '') {
+      if (element.getAttribute('property') === 'og:site_name') {
+          element.setAttribute('content', SITE_NAME);
+      }
+    }
     if (PAGE_TITLE !== '') {
-      if (element.getAttribute('property') === 'og:title'
+        if (element.getAttribute('property') === 'og:title'
         || element.getAttribute('name') === 'twitter:title') {
-        element.setAttribute('content', PAGE_TITLE);
+        element.setAttribute('content', OG_TITLE[this.pageId]?.title || PAGE_TITLE);
       }
       if (element.tagName === 'title') {
-        element.setInnerContent(PAGE_TITLE);
+        element.setInnerContent(PAGE_TO_META[this.pageId]?.title || PAGE_TITLE);
       }
     }
     if (PAGE_DESCRIPTION !== '') {
       if (element.getAttribute('name') === 'description'
         || element.getAttribute('property') === 'og:description'
         || element.getAttribute('name') === 'twitter:description') {
-        element.setAttribute('content', PAGE_DESCRIPTION);
+        element.setAttribute('content', PAGE_TO_META[this.pageId]?.description || PAGE_DESCRIPTION);
       }
     }
     if (element.getAttribute('property') === 'og:url'
@@ -176,6 +277,12 @@ class MetaRewriter {
       element.setAttribute('content', MY_DOMAIN);
     }
     if (element.getAttribute('name') === 'apple-itunes-app') {
+      element.remove();
+    }
+    if (element.getAttribute('property') === 'og:type') {
+      element.setAttribute('content', 'website');
+    }
+    if (element.getAttribute('name') === 'article:author') {
       element.remove();
     }
   }
@@ -213,6 +320,7 @@ class BodyRewriter {
     <script>
     window.CONFIG.domainBaseUrl = 'https://\${MY_DOMAIN}';
     const SLUG_TO_PAGE = \${JSON.stringify(this.SLUG_TO_PAGE)};
+    updatePageId();
     const PAGE_TO_SLUG = {};
     const slugs = [];
     const pages = [];
@@ -229,6 +337,12 @@ class BodyRewriter {
     }
     function getSlug() {
       return location.pathname.slice(1);
+    }
+    function updatePageId() {
+      const indexOfSlug = Object.keys(SLUG_TO_PAGE).indexOf(location.pathname.slice(1));
+      if (indexOfSlug > -1) {
+        history.replaceState(history.state, '', '/' + Object.values(SLUG_TO_PAGE)[indexOfSlug]);
+      }
     }
     function updateSlug() {
       const slug = PAGE_TO_SLUG[getPage()];
@@ -311,10 +425,10 @@ class BodyRewriter {
   }
 }
 
-async function appendJavascript(res, SLUG_TO_PAGE) {
+async function appendJavascript(res, SLUG_TO_PAGE, PAGE_TO_META, pageId) {
   return new HTMLRewriter()
     .on('title', new MetaRewriter())
-    .on('meta', new MetaRewriter())
+    .on('meta', new MetaRewriter(pageId, PAGE_TO_META))
     .on('head', new HeadRewriter())
     .on('body', new BodyRewriter(SLUG_TO_PAGE))
     .transform(res);

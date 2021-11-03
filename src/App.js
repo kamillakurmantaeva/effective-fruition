@@ -3,9 +3,9 @@ import { Button, Collapse, InputAdornment, TextField } from '@material-ui/core';
 import code from './code';
 import './styles.css';
 
-const DEFAULT_DOMAIN = 'fruitionsite.com';
+const DEFAULT_DOMAIN = 'effectivefruition.happy.do';
 const DEFAULT_NOTION_URL =
-  'https://stephenou.notion.site/771ef38657244c27b9389734a9cbff44';
+  'https://effective-fruition.notion.site/424f083e8d2f451cae546c0aebe02c10';
 
 function validDomain(domain) {
   return domain.match(
@@ -29,6 +29,8 @@ function validNotionUrl(url) {
 
 export default function App() {
   const [slugs, setSlugs] = useState([]);
+  const [meta, setMeta] = useState([]);
+  const [fieldNames, setFieldNames] = useState([]);
   const [myDomain, setMyDomain] = useState('');
   const [notionUrl, setNotionUrl] = useState('');
   const [pageTitle, setPageTitle] = useState('');
@@ -65,8 +67,27 @@ export default function App() {
     setSlugs([...slugs, ['', '']]);
     setCopied(false);
   };
+  const addMeta = () => {
+    setMeta([...meta, ['', '', '']]);
+    setCopied(false);
+  };
+  const addHiddenFieldNames = () => {
+    setFieldNames([...fieldNames, ['', '']]);
+    setCopied(false);
+  };
   const deleteSlug = (index) => {
     setSlugs([...slugs.slice(0, index), ...slugs.slice(index + 1)]);
+    setCopied(false);
+  };
+  const deleteMeta = (index) => {
+    setMeta([...meta.slice(0, index), ...meta.slice(index + 1)]);
+    setCopied(false);
+  };
+  const deleteHiddenFieldNames = (index) => {
+    setFieldNames([
+      ...fieldNames.slice(0, index),
+      ...fieldNames.slice(index + 1),
+    ]);
     setCopied(false);
   };
   const handleCustomURL = (value, index) => {
@@ -77,11 +98,51 @@ export default function App() {
     ]);
     setCopied(false);
   };
+  const handleMetaTitle = (value, index) => {
+    setMeta([
+      ...meta.slice(0, index),
+      [meta[index][0], value, meta[index][2]],
+      ...meta.slice(index + 1),
+    ]);
+    setCopied(false);
+  };
+  const handleMetaDescription = (value, index) => {
+    setMeta([
+      ...meta.slice(0, index),
+      [meta[index][0], meta[index][1], value],
+      ...meta.slice(index + 1),
+    ]);
+    setCopied(false);
+  };
   const handleNotionPageURL = (value, index) => {
     setSlugs([
       ...slugs.slice(0, index),
       [slugs[index][0], value],
       ...slugs.slice(index + 1),
+    ]);
+    setCopied(false);
+  };
+  const handleNotionPageURLMeta = (value, index) => {
+    setMeta([
+      ...meta.slice(0, index),
+      [value, meta[index][1], meta[index][2]],
+      ...meta.slice(index + 1),
+    ]);
+    setCopied(false);
+  };
+  const handleNotionPageURLField = (value, index) => {
+    setFieldNames([
+      ...fieldNames.slice(0, index),
+      [value, fieldNames[index][1]],
+      ...fieldNames.slice(index + 1),
+    ]);
+    setCopied(false);
+  };
+  const handleFieldNames = (value, index) => {
+    setFieldNames([
+      ...fieldNames.slice(0, index),
+      [fieldNames[index][0], value],
+      ...fieldNames.slice(index + 1),
     ]);
     setCopied(false);
   };
@@ -102,6 +163,8 @@ export default function App() {
         myDomain: domain,
         notionUrl: url,
         slugs,
+        meta,
+        fieldNames,
         pageTitle,
         pageDescription,
         googleFont,
@@ -184,6 +247,104 @@ export default function App() {
           color="primary"
         >
           Add a pretty link
+        </Button>
+      </section>
+      {meta.map(([notionPageUrl, title, description], index) => {
+        return (
+          <section>
+            <TextField
+              fullWidth
+              label={`Notion URL of pages to change meta`}
+              key="key"
+              margin="normal"
+              placeholder={DEFAULT_NOTION_URL}
+              onChange={(e) => handleNotionPageURLMeta(e.target.value, index)}
+              value={notionPageUrl}
+              variant="outlined"
+            />
+            <TextField
+              fullWidth
+              key="value"
+              label="Page meta title"
+              margin="normal"
+              placeholder="Effective Fruition"
+              onChange={(e) => handleMetaTitle(e.target.value, index)}
+              value={title}
+              variant="outlined"
+            />
+            <TextField
+              fullWidth
+              key="value"
+              label="Page meta description"
+              margin="normal"
+              placeholder="Fruition Empowerment Website"
+              onChange={(e) => handleMetaDescription(e.target.value, index)}
+              value={description}
+              variant="outlined"
+            />
+            <Button
+              onClick={() => deleteMeta(index)}
+              variant="outlined"
+              color="secondary"
+              size="small"
+            >
+              Delete this metadata
+            </Button>
+          </section>
+        );
+      })}
+      <section>
+        <Button
+          onClick={addMeta}
+          size="small"
+          variant="outlined"
+          color="primary"
+        >
+          Add URL for change page metadata
+        </Button>
+      </section>
+      {fieldNames.map(([notionPageUrl, fieldName], index) => {
+        return (
+          <section>
+            <TextField
+              fullWidth
+              label={`Notion URL of pages to hidden fields`}
+              key="key"
+              margin="normal"
+              placeholder={DEFAULT_NOTION_URL}
+              onChange={(e) => handleNotionPageURLField(e.target.value, index)}
+              value={notionPageUrl}
+              variant="outlined"
+            />
+            <TextField
+              fullWidth
+              key="value"
+              label="Hidden field names"
+              margin="normal"
+              placeholder="email, phone, ..."
+              onChange={(e) => handleFieldNames(e.target.value, index)}
+              value={fieldName}
+              variant="outlined"
+            />
+            <Button
+              onClick={() => deleteHiddenFieldNames(index)}
+              variant="outlined"
+              color="secondary"
+              size="small"
+            >
+              Delete this pretty link
+            </Button>
+          </section>
+        );
+      })}
+      <section>
+        <Button
+          onClick={addHiddenFieldNames}
+          size="small"
+          variant="outlined"
+          color="primary"
+        >
+          Hide fields on the page
         </Button>
       </section>
       <section>
