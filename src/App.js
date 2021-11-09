@@ -1,5 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { Button, Collapse, InputAdornment, TextField } from '@material-ui/core';
+import {
+  Button,
+  Collapse,
+  Divider,
+  InputAdornment,
+  TextField,
+  Typography,
+} from '@material-ui/core';
 import code from './code';
 import './styles.css';
 
@@ -180,6 +187,9 @@ export default function App() {
   };
   return (
     <section style={{ maxWidth: 666 }}>
+      <Typography variant="h5">
+        Enter your domain name and Notion URL
+      </Typography>
       <TextField
         fullWidth
         helperText={myDomainHelperText}
@@ -200,6 +210,10 @@ export default function App() {
         value={notionUrl}
         variant="outlined"
       />
+      <Typography variant="subtitle1" style={{ marginTop: 30 }}>
+        Add links to the page
+      </Typography>
+      <Divider />
       {slugs.map(([customUrl, notionPageUrl], index) => {
         return (
           <section>
@@ -211,7 +225,7 @@ export default function App() {
                 ),
               }}
               key="key"
-              label="Pretty Link"
+              label="Link"
               margin="normal"
               placeholder="about"
               onChange={(e) => handleCustomURL(e.target.value, index)}
@@ -234,7 +248,7 @@ export default function App() {
               color="secondary"
               size="small"
             >
-              Delete this pretty link
+              Delete this link
             </Button>
           </section>
         );
@@ -246,9 +260,13 @@ export default function App() {
           variant="outlined"
           color="primary"
         >
-          Add a pretty link
+          Add link
         </Button>
       </section>
+      <Typography variant="subtitle1" style={{ marginTop: 30 }}>
+        Add URL for change page metadata
+      </Typography>
+      <Divider />
       {meta.map(([notionPageUrl, title, description], index) => {
         return (
           <section>
@@ -300,9 +318,13 @@ export default function App() {
           variant="outlined"
           color="primary"
         >
-          Add URL for change page metadata
+          Add URL
         </Button>
       </section>
+      <Typography variant="subtitle1" style={{ marginTop: 30 }}>
+        Add rules for hide fields on the page
+      </Typography>
+      <Divider />
       {fieldNames.map(([notionPageUrl, fieldName], index) => {
         return (
           <section>
@@ -319,9 +341,9 @@ export default function App() {
             <TextField
               fullWidth
               key="value"
-              label="Hidden field names"
+              label="Hidden field name"
               margin="normal"
-              placeholder="email, phone, ..."
+              placeholder="User email"
               onChange={(e) => handleFieldNames(e.target.value, index)}
               value={fieldName}
               variant="outlined"
@@ -332,7 +354,7 @@ export default function App() {
               color="secondary"
               size="small"
             >
-              Delete this pretty link
+              Remove rule for hide fields on the page
             </Button>
           </section>
         );
@@ -344,9 +366,13 @@ export default function App() {
           variant="outlined"
           color="primary"
         >
-          Hide fields on the page
+          Add rule
         </Button>
       </section>
+      <Typography variant="subtitle1" style={{ marginTop: 30 }}>
+        Toggle Style And Script Settings
+      </Typography>
+      <Divider />
       <section>
         <Button
           onClick={handleOptional}
@@ -354,7 +380,7 @@ export default function App() {
           variant="outlined"
           color="primary"
         >
-          Toggle Style And Script Settings
+          Change
         </Button>
       </section>
       <Collapse in={optional} timeout="auto" unmountOnExit>
@@ -395,7 +421,7 @@ export default function App() {
           variant="outlined"
         />
       </Collapse>
-      <section>
+      <section style={{ marginTop: 30 }}>
         <Button
           disabled={!noError}
           variant="contained"
