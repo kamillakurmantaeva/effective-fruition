@@ -79,7 +79,13 @@ export default function App() {
     setCopied(false);
   };
   const addHiddenFieldNames = () => {
-    setFieldNames([...fieldNames, ['', '']]);
+    setFieldNames([...fieldNames, ['', [], fieldNames.length]]);
+    setCopied(false);
+  };
+  const addHiddenField = (index) => {
+    const newFields = fieldNames.slice();
+    newFields[index][1].push('');
+    setFieldNames(newFields);
     setCopied(false);
   };
   const deleteSlug = (index) => {
@@ -95,6 +101,12 @@ export default function App() {
       ...fieldNames.slice(0, index),
       ...fieldNames.slice(index + 1),
     ]);
+    setCopied(false);
+  };
+  const deleteHiddenField = (indexOfFieldNames, indexOfFieldName) => {
+    const newFields = fieldNames.slice();
+    newFields[indexOfFieldNames][1].splice(indexOfFieldName, 1);
+    setFieldNames(newFields);
     setCopied(false);
   };
   const handleCustomURL = (value, index) => {
@@ -140,17 +152,15 @@ export default function App() {
   const handleNotionPageURLField = (value, index) => {
     setFieldNames([
       ...fieldNames.slice(0, index),
-      [value, fieldNames[index][1]],
+      [value, fieldNames[index][1], fieldNames[index][2]],
       ...fieldNames.slice(index + 1),
     ]);
     setCopied(false);
   };
-  const handleFieldNames = (value, index) => {
-    setFieldNames([
-      ...fieldNames.slice(0, index),
-      [fieldNames[index][0], value],
-      ...fieldNames.slice(index + 1),
-    ]);
+  const handleFieldNames = (value, indexOfFieldNames, indexOfFieldName) => {
+    const newFields = fieldNames.slice();
+    newFields[indexOfFieldNames][1][indexOfFieldName] = value;
+    setFieldNames(newFields);
     setCopied(false);
   };
   const handleOptional = () => {
@@ -325,9 +335,9 @@ export default function App() {
         Add rules for hide fields on the page
       </Typography>
       <Divider />
-      {fieldNames.map(([notionPageUrl, fieldName], index) => {
+      {fieldNames.map(([notionPageUrl, fieldName = [], id], index) => {
         return (
-          <section>
+          <section key={id}>
             <TextField
               fullWidth
               label={`Notion URL of pages to hidden fields`}
@@ -338,16 +348,40 @@ export default function App() {
               value={notionPageUrl}
               variant="outlined"
             />
-            <TextField
-              fullWidth
-              key="value"
-              label="Hidden field name"
-              margin="normal"
-              placeholder="User email"
-              onChange={(e) => handleFieldNames(e.target.value, index)}
-              value={fieldName}
-              variant="outlined"
-            />
+            {fieldName.map((field, i) => {
+              return (
+                <>
+                  <TextField
+                    fullWidth
+                    label="Hidden field name"
+                    margin="normal"
+                    placeholder="User email"
+                    onChange={(e) => handleFieldNames(e.target.value, index, i)}
+                    value={field}
+                    variant="outlined"
+                  />
+                  <Button
+                    onClick={() => deleteHiddenField(index, i)}
+                    variant="outlined"
+                    color="secondary"
+                    size="small"
+                  >
+                    Remove field
+                  </Button>
+                </>
+              );
+            })}
+            <section>
+              <Button
+                onClick={() => addHiddenField(index)}
+                variant="outlined"
+                color="primary"
+                size="small"
+                style={{ marginBottom: 20 }}
+              >
+                Add field
+              </Button>
+            </section>
             <Button
               onClick={() => deleteHiddenFieldNames(index)}
               variant="outlined"
