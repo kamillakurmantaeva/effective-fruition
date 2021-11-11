@@ -251,15 +251,10 @@ class MetaRewriter {
     this.PAGE_TO_META = meta;
   }
   element(element) {
-    if (SITE_NAME !== '') {
-      if (element.getAttribute('property') === 'og:site_name') {
-          element.setAttribute('content', SITE_NAME);
-      }
-    }
     if (PAGE_TITLE !== '') {
         if (element.getAttribute('property') === 'og:title'
         || element.getAttribute('name') === 'twitter:title') {
-        element.setAttribute('content', OG_TITLE[this.pageId]?.title || PAGE_TITLE);
+        element.setAttribute('content', PAGE_TO_META[this.pageId]?.title || PAGE_TITLE);
       }
       if (element.tagName === 'title') {
         element.setInnerContent(PAGE_TO_META[this.pageId]?.title || PAGE_TITLE);
