@@ -15,6 +15,7 @@ export default function code(data) {
     slugs,
     meta,
     fieldNames,
+    siteName,
     pageTitle,
     pageDescription,
     googleFont,
@@ -68,7 +69,8 @@ const PROPERTIES_TO_DELETE= {
     .trim()}
 };
 
-/* Step 3: enter your page title and description for SEO purposes */
+/* Step 3: enter your site name, page title and description for SEO purposes */
+const SITE_NAME = '${siteName || ''}';
 const PAGE_TITLE = '${pageTitle || ''}';
 const PAGE_DESCRIPTION = '${pageDescription || ''}';
 
@@ -136,7 +138,7 @@ async function fetchAndApply(request) {
   let url = new URL(request.url);
   url.hostname = 'www.notion.so';
   if (url.pathname === '/robots.txt') {
-    return new Response('Sitemap: https://' + MY_DOMAIN + '/sitemap.xml');
+    return new Response(\`Sitemap: https://\${MY_DOMAIN}/sitemap.xml\n\nUser-agent: *\nAllow: /\n\nUser-agent: Yandex\nAllow: /\nHost: https://\${MY_DOMAIN}/\n\nUser-agent: Googlebot\nAllow: /\`);
   }
   if (url.pathname === '/sitemap.xml') {
     let response = new Response(generateSitemap());
@@ -227,11 +229,10 @@ async function fetchAndApply(request) {
       headers: request.headers,
       method: request.method,
     });
+    response = new Response(response.body, response);
+    response.headers.delete('Content-Security-Policy');
+    response.headers.delete('X-Content-Security-Policy');
   } else {
-    if (slugs.indexOf(url.pathname.slice(1)) > -1) {
-      const pageId = SLUG_TO_PAGE[url.pathname.slice(1)];
-      url.pathname = '/' + pageId;
-    }     
     response = await fetch(url.toString(), {
       body: request.body,
       headers: request.headers,
@@ -251,8 +252,13 @@ class MetaRewriter {
     this.PAGE_TO_META = meta;
   }
   element(element) {
+    if (SITE_NAME !== '') {
+      if (element.getAttribute('property') === 'og:site_name') {
+        element.setAttribute('content', SITE_NAME || PAGE_TITLE);
+      }
+    }
     if (PAGE_TITLE !== '') {
-        if (element.getAttribute('property') === 'og:title'
+      if (element.getAttribute('property') === 'og:title'
         || element.getAttribute('name') === 'twitter:title') {
         element.setAttribute('content', PAGE_TO_META[this.pageId]?.title || PAGE_TITLE);
       }

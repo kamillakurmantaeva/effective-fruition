@@ -16,7 +16,7 @@ const DEFAULT_NOTION_URL =
 
 function validDomain(domain) {
   return domain.match(
-    /^((https:\/\/)|(http:\/\/))?[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+(\/)?$/
+    /^((https:\/\/)|(http:\/\/))?[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+(\/)?$/,
   );
 }
 
@@ -40,6 +40,7 @@ export default function App() {
   const [fieldNames, setFieldNames] = useState([]);
   const [myDomain, setMyDomain] = useState('');
   const [notionUrl, setNotionUrl] = useState('');
+  const [siteName, setSiteName] = useState('');
   const [pageTitle, setPageTitle] = useState('');
   const [pageDescription, setPageDescription] = useState('');
   const [googleFont, setGoogleFont] = useState('');
@@ -52,6 +53,10 @@ export default function App() {
   };
   const handleNotionUrl = (e) => {
     setNotionUrl(e.target.value);
+    setCopied(false);
+  };
+  const handleSiteName = (e) => {
+    setSiteName(e.target.value);
     setCopied(false);
   };
   const handlePageTitle = (e) => {
@@ -182,6 +187,7 @@ export default function App() {
         slugs,
         meta,
         fieldNames,
+        siteName,
         pageTitle,
         pageDescription,
         googleFont,
@@ -197,7 +203,7 @@ export default function App() {
   };
   return (
     <section style={{ maxWidth: 666 }}>
-      <Typography variant="h5">
+      <Typography variant="h6">
         Enter your domain name and Notion URL
       </Typography>
       <TextField
@@ -218,6 +224,33 @@ export default function App() {
         onChange={handleNotionUrl}
         placeholder={DEFAULT_NOTION_URL}
         value={notionUrl}
+        variant="outlined"
+      />
+      <Typography variant="h6" style={{ marginTop: 30 }}>
+        Enter your site name, page title and description for SEO purposes
+      </Typography>
+      <TextField
+        fullWidth
+        label="Site Name"
+        margin="normal"
+        onChange={handleSiteName}
+        value={siteName}
+        variant="outlined"
+      />
+      <TextField
+        fullWidth
+        label="Page Title"
+        margin="normal"
+        onChange={handlePageTitle}
+        value={pageTitle}
+        variant="outlined"
+      />
+      <TextField
+        fullWidth
+        label="Page Description"
+        margin="normal"
+        onChange={handlePageDescription}
+        value={pageDescription}
         variant="outlined"
       />
       <Typography variant="subtitle1" style={{ marginTop: 30 }}>
@@ -418,22 +451,6 @@ export default function App() {
         </Button>
       </section>
       <Collapse in={optional} timeout="auto" unmountOnExit>
-        <TextField
-          fullWidth
-          label="Page Title"
-          margin="normal"
-          onChange={handlePageTitle}
-          value={pageTitle}
-          variant="outlined"
-        />
-        <TextField
-          fullWidth
-          label="Page Description"
-          margin="normal"
-          onChange={handlePageDescription}
-          value={pageDescription}
-          variant="outlined"
-        />
         <TextField
           fullWidth
           label="Custom Google Font"
